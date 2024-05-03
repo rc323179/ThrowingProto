@@ -7,6 +7,10 @@ public class Object : MonoBehaviour
     public float weight;
     public float speed;
     public float drag;
+    public float delay;
+    public float stabRange;
+    public float stabTime;
+    public float dropDelay;
 
     private void Update()
     {

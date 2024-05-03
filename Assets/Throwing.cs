@@ -14,9 +14,19 @@ public class Throwing : MonoBehaviour
 
     public float rotForce;
 
+    public float delay;
 
-    bool hasObj = false;
+    public bool hasObj = false;
 
+    public float weight;
+
+    Object myGrabbedStats;
+
+    bool isStabbing;
+
+    float AnimationTimer;
+
+    bool forwardStab;
 
     private void Start()
     {
@@ -58,53 +68,93 @@ public class Throwing : MonoBehaviour
 
         rot = rot.normalized;
 
+        delay -= Time.deltaTime; // Added Code (RyanC5)
         throwPoint.transform.position = transform.position + ((grabDistance*1.5f) * rot);
-
 
 
         hasObj = (myGrabbedObject == null) ? false : true;
 
         if (!hasObj)
         {
-            GameObject[] throwables = GameObject.FindGameObjectsWithTag("Throwable");
-
-            GameObject myTarget = null;
-            float dist = grabDistance;
-
-            foreach (GameObject throwable in throwables)
+            if(delay <= 0)
             {
-                if(Vector2.Distance(transform.position, throwable.transform.position) < dist && throwable.GetComponent<Rigidbody2D>().velocity.magnitude < objCatchSpeed)
+                GameObject[] throwables = GameObject.FindGameObjectsWithTag("Throwable");
+
+                GameObject myTarget = null;
+                float dist = grabDistance;
+
+                foreach (GameObject throwable in throwables)
                 {
-                    myTarget = throwable;
-                    dist = Vector2.Distance(transform.position, throwable.transform.position);
+                    if(Vector2.Distance(transform.position, throwable.transform.position) < dist && throwable.GetComponent<Rigidbody2D>().velocity.magnitude < objCatchSpeed)
+                    {
+                        myTarget = throwable;
+                        delay = throwable.GetComponent<Object>().delay/1000f; // Added Code (RyanC5)
+                        weight = throwable.GetComponent<Object>().weight; // Added Code (RyanC5)
+                        GetComponent<PlayerMovement>().speed = GetComponent<PlayerMovement>().displaySpeed - weight/20; // Added Code (RyanC5)
+                        dist = Vector2.Distance(transform.position, throwable.transform.position);
+                    }
                 }
-            }
 
-            myGrabbedObject = myTarget;
+                myGrabbedObject = myTarget;
 
-
-            if (myTarget != null)
-            {
-                myGrabbedObject.GetComponent<Rigidbody2D>().velocity = Vector3.zero;
+                if (myTarget != null)
+                {
+                   myGrabbedStats = myTarget.GetComponent<Object>();
+                    myGrabbedObject.GetComponent<Rigidbody2D>().velocity = Vector3.zero;
+                }
             }
 
         } else
         {
-            throwPoint.transform.position = transform.position + ((myGrabbedObject.transform.GetChild(0).transform.localScale.x) * rot);
+
+            throwPoint.transform.position = transform.position + ((myGrabbedObject.transform.GetChild(0).transform.localScale.x+AnimationTimer) * rot);
 
 
             myGrabbedObject.transform.position = throwPoint.transform.position;
 
-            if (Input.GetKeyDown(KeyCode.Mouse0))
+
+            if(delay <= 0f)
             {
-                myGrabbedObject.GetComponent<Rigidbody2D>().velocity = rot * myGrabbedObject.GetComponent<Object>().speed;
-                myGrabbedObject.GetComponent<Rigidbody2D>().mass = myGrabbedObject.GetComponent<Object>().weight;
-                myGrabbedObject.GetComponent<Rigidbody2D>().drag = myGrabbedObject.GetComponent<Object>().drag;
+                if (Input.GetKeyDown(KeyCode.Mouse0))
+                {
+                    myGrabbedObject.GetComponent<Rigidbody2D>().velocity = rot * myGrabbedObject.GetComponent<Object>().speed;
+                    myGrabbedObject.GetComponent<Rigidbody2D>().mass = myGrabbedObject.GetComponent<Object>().weight;
+                    myGrabbedObject.GetComponent<Rigidbody2D>().drag = myGrabbedObject.GetComponent<Object>().drag;
 
-                myGrabbedObject.GetComponent<Rigidbody2D>().AddTorque(rotForce, ForceMode2D.Force);
+                    myGrabbedObject.GetComponent<Rigidbody2D>().AddTorque(rotForce, ForceMode2D.Force);
 
-                hasObj = false;
-                myGrabbedObject = null;
+                        GetComponent<PlayerMovement>().speed = GetComponent<PlayerMovement>().displaySpeed; // Added Code (RyanC5)
+                    hasObj = false;
+                    myGrabbedObject = null;
+                    AnimationTimer = 0f;
+                    delay = myGrabbedStats.dropDelay/1000f;
+                }
+                else if(Input.GetKeyDown(KeyCode.Mouse1)) // Added Code (RyanC5)
+                {
+                    delay = myGrabbedStats.stabTime/1000f;
+                    isStabbing = true;
+                    forwardStab = true;
+                }
+            }
+            if(isStabbing) // Added Code (RyanC5)
+            {
+                if(forwardStab)
+                {
+                    AnimationTimer += myGrabbedStats.stabRange * Time.deltaTime / myGrabbedStats.stabTime * 1000f;
+                    if(delay <= myGrabbedStats.stabTime/2000f)
+                    {
+                        forwardStab = false;
+                    }
+                }
+                else
+                {
+                    AnimationTimer -= myGrabbedStats.stabRange * Time.deltaTime / myGrabbedStats.stabTime * 1000f;
+                    if(delay <= 0)
+                    {
+                        isStabbing = false;
+                        AnimationTimer = 0f;
+                    }
+                }
             }
         }
 
